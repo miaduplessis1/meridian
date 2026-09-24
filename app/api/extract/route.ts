@@ -1,4 +1,3 @@
-import { generateText, gateway } from 'ai'
 import { NextResponse } from 'next/server'
 
 const SYSTEM_PROMPT = `You are an assistant that converts messy financial adviser notes into a single JSON object matching a strict schema, used to auto-populate an investment proposal tool.
@@ -44,14 +43,48 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Please add meeting notes before generating a proposal.' }, { status: 400 })
     }
 
-    const result = await generateText({
-      model: gateway('anthropic/claude-sonnet-4.6'),
-      system: SYSTEM_PROMPT,
-      prompt: `Convert these adviser notes into the JSON object described above:\n\n${notes}`,
-      temperature: 0,
-    })
+    const apiKey = process.env.GEMINI_API_KEY
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY is not configured.')
+    }
 
-    const cleaned = result.text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '')
+    const response = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: `${SYSTEM_PROMPT}\n\nReturn ONLY raw JSON. Do not wrap the response in markdown or code fences.` }],
+          },
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: `Convert these adviser notes into the JSON object described above:\n\n${notes}` }],
+            },
+          ],
+          generationConfig: {
+            temperature: 0,
+            responseMimeType: 'application/json',
+          },
+        }),
+      },
+    )
+
+    if (!response.ok) {
+      throw new Error(`Gemini API request failed with status ${response.status}.`)
+    }
+
+    const result = await response.json()
+    const generatedText = result.candidates?.[0]?.content?.parts?.[0]?.text
+    if (typeof generatedText !== 'string' || !generatedText.trim()) {
+      throw new Error('Gemini returned an empty response.')
+    }
+
+    const cleaned = generatedText.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '')
     const data = JSON.parse(cleaned)
     return NextResponse.json(data)
   } catch (error) {
