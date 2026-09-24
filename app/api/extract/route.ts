@@ -43,9 +43,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Please add meeting notes before generating a proposal.' }, { status: 400 })
     }
 
-    const apiKey = process.env.Gemini_API_Key
+    // Support the project's existing variable while also accepting Gemini's conventional uppercase name.
+    const apiKey = process.env.GEMINI_API_KEY ?? process.env.Gemini_API_Key
     if (!apiKey) {
-      throw new Error('Gemini_API_Key is not configured.')
+      throw new Error('GEMINI_API_KEY (or Gemini_API_Key) is not configured.')
     }
 
     const response = await fetch(
