@@ -1,33 +1,42 @@
-# meridian
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
+# Meridian Proposal Agent
 
-## Built with v0
+An AI agent that turns a financial adviser's meeting notes into a fully
+populated investment proposal. Built for the Old Mutual Wealth AI Engineer
+Challenge.
 
-This repository is linked to a [v0](https://v0.app) project. You can continue developing by visiting the link below -- start new chats to make changes, and v0 will push commits directly to this repo. Every merge to `main` will automatically deploy.
+## What it does
 
-[Continue working on v0 →](https://v0.app/chat/projects/prj_uea9pGdM0iF81ETKR0kMtji9xzKF)
+1. An adviser pastes their meeting notes (plain English) into the app.
+2. The notes are sent to an LLM (Google Gemini) via a Next.js API route
+   (`/api/extract`), which extracts a structured JSON object matching the
+   proposal schema — never inventing figures the notes didn't provide.
+3. That JSON is passed into `challenge-generator.html` via
+   `window.postMessage` + `window.loadProposal()`, rendering a complete,
+   ready-to-review investment proposal.
 
-## Getting Started
+Any field the model can't confidently fill in from the notes (e.g. a missing
+investment amount or time horizon) is flagged inside the generated proposal
+as a distinct amber "confirm with client" callout, rather than being guessed
+or silently left buried in the text.
 
-First, run the development server:
+## Model used
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-```
+**Google Gemini 3.6-flash**, called directly via the Generative Language API
+(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent`).
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The route includes automatic retry with backoff on transient `429`
+(rate limit) and `503` (overloaded) errors, with fallback to
+`gemini-flash-latest` and `gemini-2.5-flash-lite` if the primary model is
+unavailable.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Note:** this demo runs on a free-tier Gemini API key. Under heavy
+back-to-back testing, a `429` or `503` can occasionally surface even with
+the retry/fallback logic in place — this reflects free-tier rate limits,
+not an application bug.
 
-## Learn More
+## Running it locally
 
-To learn more, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
+Requires an environment variable named `Gemini_API_Key` (or `GEMINI_API_KEY`,
+both are supported) set to a valid Gemini API key from
+[Google AI Studio](https://aistudio.google.com/apikey).
