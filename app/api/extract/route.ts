@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 
+const MODELS_TO_TRY = ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite']
+
 const SYSTEM_PROMPT = `You are an assistant that converts messy financial adviser notes into a single JSON object matching a strict schema, used to auto-populate an investment proposal tool.
 
 Rules:
@@ -50,7 +52,7 @@ export async function POST(request: Request) {
     }
 
     const response = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODELS_TO_TRY[0]}:generateContent`,
       {
         method: 'POST',
         headers: {
@@ -90,7 +92,9 @@ export async function POST(request: Request) {
     return NextResponse.json(data)
   } catch (error) {
     console.error('[v0] Proposal extraction failed:', error)
-    const message = error instanceof Error ? error.message : String(error)
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 },
+    )
   }
 }
