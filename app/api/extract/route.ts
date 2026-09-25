@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     return NextResponse.json(data)
   } catch (error) {
     console.error('[v0] Proposal extraction failed:', error)
-    const message = error instanceof SyntaxError ? 'The model returned invalid JSON. Please try again.' : 'Unable to generate the proposal right now. Please try again.'
+    const message = error instanceof Error ? error.message : String(error)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
